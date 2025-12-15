@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Screen Recorder</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -13,37 +12,84 @@
             background-color: #1a202c; /* Dark background */
             color: #e2e8f0; /* Light text */
         }
+        /* Custom class for mobile focus to remove blue highlight */
+        .focus-ring-offset-gray-800:focus:ring-offset-2 {
+            --tw-ring-offset-color: #1f2937; /* A slightly darker gray for better contrast */
+        }
+        /* Hide scrollbars on video preview if content overflows slightly */
+        #videoPreview {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
+<body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
 
-    <div id="app-container" class="w-full max-w-2xl bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700">
-        <h1 class="text-3xl font-bold text-center mb-6">Screen Recorder</h1>
+    <div id="app-container" class="w-full max-w-3xl bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-700">
+        <h1 class="text-2xl sm:text-3xl font-bold text-center mb-6">Screen Recorder</h1>
 
-        <div class="flex flex-col items-center space-y-4">
-            <button id="startButton" class="w-full py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-800">
+        <div class="mb-6 space-y-4">
+            <h2 class="text-xl font-semibold text-gray-200">Recording Settings</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="flex flex-col">
+                    <label for="aspectRatio" class="text-sm font-medium mb-1 text-gray-400">Aspect Ratio</label>
+                    <select id="aspectRatio" class="p-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500">
+                        <option value="none">Default Screen</option>
+                        <option value="16:9" data-width="1920" data-height="1080">16:9 (Landscape)</option>
+                        <option value="9:16" data-width="1080" data-height="1920">9:16 (Portrait/Stories)</option>
+                        <option value="4:3" data-width="1600" data-height="1200">4:3 (Classic)</option>
+                        <option value="1:1" data-width="1080" data-height="1080">1:1 (Square)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="resolution" class="text-sm font-medium mb-1 text-gray-400">Max Resolution</label>
+                    <select id="resolution" class="p-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500">
+                        <option value="default">Default</option>
+                        <option value="4K">4K (3840x2160)</option>
+                        <option value="1080p">1080p (1920x1080)</option>
+                        <option value="720p">720p (1280x720)</option>
+                        <option value="480p">480p (854x480)</option>
+                        <option value="360p">360p (640x360)</option>
+                    </select>
+                </div>
+                
+                <div class="flex flex-col col-span-2 md:col-span-1">
+                    <label for="includeAudio" class="text-sm font-medium mb-1 text-gray-400">Include Audio</label>
+                    <button id="audioToggle" class="py-2 px-4 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-lg shadow-md transition-colors duration-200" data-audio="true">
+                        Audio: ON 🔊
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+            <button id="startButton" class="w-full sm:w-1/2 py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus-ring-offset-gray-800">
                 Start Recording
             </button>
-            <button id="stopButton" class="w-full py-3 px-6 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 hidden focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800">
+            <button id="stopButton" class="w-full sm:w-1/2 py-3 px-6 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 hidden focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus-ring-offset-gray-800">
                 Stop Recording
             </button>
         </div>
 
         <div id="statusMessage" class="text-center mt-6 text-gray-400">
-            Click 'Start Recording' to begin.
+            Select your settings and click 'Start Recording'.
         </div>
 
         <div id="videoPreviewContainer" class="mt-6 hidden">
-            <video id="videoPreview" class="w-full rounded-lg border border-gray-700" autoplay muted></video>
+            <h2 class="text-lg font-semibold mb-2 text-gray-200">Live Preview</h2>
+            <video id="videoPreview" class="w-full rounded-lg border border-gray-700 bg-black" autoplay muted playsinline></video>
         </div>
         
         <div id="downloadContainer" class="text-center mt-6 hidden">
-            <a id="downloadLink" href="#" download="recorded-video.mp4" class="inline-block py-2 px-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">
+            <a id="downloadLink" href="#" download="recorded-video.webm" class="inline-block py-2 px-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">
                 Download Video
             </a>
         </div>
         
-        <!-- New container for the donation button, hidden by default -->
         <div id="donateContainer" class="text-center mt-4 hidden">
             <a href="#" class="inline-block py-2 px-6 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">
                 Buy Me a Coffee ☕
@@ -68,6 +114,11 @@
         const downloadLink = document.getElementById('downloadLink');
         const downloadContainer = document.getElementById('downloadContainer');
         const donateContainer = document.getElementById('donateContainer');
+        const aspectRatioSelect = document.getElementById('aspectRatio');
+        const resolutionSelect = document.getElementById('resolution');
+        const audioToggle = document.getElementById('audioToggle');
+        
+        // --- UI Update Functions ---
         
         // Function to update the UI based on the app state
         function updateUI() {
@@ -77,36 +128,104 @@
                 statusMessage.textContent = 'Recording... Click "Stop" to finish.';
                 videoPreviewContainer.classList.remove('hidden');
                 downloadContainer.classList.add('hidden');
-                donateContainer.classList.add('hidden'); // Hide donate button while recording
+                donateContainer.classList.add('hidden'); 
+                // Disable settings while recording
+                aspectRatioSelect.disabled = true;
+                resolutionSelect.disabled = true;
+                audioToggle.disabled = true;
             } else {
                 startButton.classList.remove('hidden');
                 stopButton.classList.add('hidden');
                 statusMessage.textContent = 'Recording stopped. You can download the video.';
                 videoPreviewContainer.classList.add('hidden');
                 downloadContainer.classList.remove('hidden');
-                donateContainer.classList.remove('hidden'); // Show donate button after recording
+                donateContainer.classList.remove('hidden'); 
+                // Enable settings
+                aspectRatioSelect.disabled = false;
+                resolutionSelect.disabled = false;
+                audioToggle.disabled = false;
             }
+        }
+        
+        // Audio Toggle Handler
+        audioToggle.addEventListener('click', () => {
+            const currentAudio = audioToggle.dataset.audio === 'true';
+            const newAudio = !currentAudio;
+            audioToggle.dataset.audio = newAudio;
+            
+            if (newAudio) {
+                audioToggle.textContent = 'Audio: ON 🔊';
+                audioToggle.classList.replace('bg-red-500', 'bg-gray-600');
+                audioToggle.classList.replace('hover:bg-red-600', 'hover:bg-gray-500');
+            } else {
+                audioToggle.textContent = 'Audio: OFF 🔇';
+                audioToggle.classList.replace('bg-gray-600', 'bg-red-500');
+                audioToggle.classList.replace('hover:bg-gray-500', 'hover:bg-red-600');
+            }
+        });
+        
+        // --- Recording Logic ---
+
+        // Helper to get selected constraints
+        function getConstraints() {
+            const selectedAspect = aspectRatioSelect.value;
+            const selectedResolution = resolutionSelect.value;
+            const includeAudio = audioToggle.dataset.audio === 'true';
+            
+            let videoConstraints = {
+                frameRate: { ideal: 30 },
+            };
+            
+            // 1. Resolution Constraint (Ideal/Max)
+            const resolutions = {
+                '4K': { width: { ideal: 3840, max: 3840 }, height: { ideal: 2160, max: 2160 } },
+                '1080p': { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 } },
+                '720p': { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 } },
+                '480p': { width: { ideal: 854, max: 854 }, height: { ideal: 480, max: 480 } },
+                '360p': { width: { ideal: 640, max: 640 }, height: { ideal: 360, max: 360 } },
+            };
+
+            if (selectedResolution !== 'default' && resolutions[selectedResolution]) {
+                videoConstraints = { ...videoConstraints, ...resolutions[selectedResolution] };
+            }
+
+            // 2. Aspect Ratio Constraint (Based on selection)
+            // Note: This is an IDEAL constraint. The user's screen share selection (window, screen, tab)
+            // will ultimately dictate the captured resolution and aspect ratio. This helps *guide* the capture.
+            if (selectedAspect !== 'none') {
+                const parts = selectedAspect.split(':');
+                const ratio = parseInt(parts[0]) / parseInt(parts[1]);
+                videoConstraints.aspectRatio = ratio;
+            }
+            
+            return {
+                video: videoConstraints,
+                audio: includeAudio,
+            };
         }
 
         // Handles starting the screen recording
         async function startRecording() {
+            if (isRecording) return;
+            
+            const constraints = getConstraints();
+            statusMessage.textContent = 'Requesting screen sharing permission...';
+
             try {
-                // Check if the MediaDevices API is supported
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                    statusMessage.textContent = 'Your browser does not support screen recording.';
+                    statusMessage.textContent = 'Error: Your browser does not support screen recording (MediaDevices API missing).';
                     return;
                 }
 
-                // Request permission to capture the screen
-                mediaStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: true
-                });
+                // Request permission to capture the screen with selected constraints
+                // getDisplayMedia is an async operation that opens a native dialog
+                mediaStream = await navigator.mediaDevices.getDisplayMedia(constraints);
 
                 // Display a preview of the screen capture
                 videoPreview.srcObject = mediaStream;
 
                 // Set up the MediaRecorder
+                // 'video/webm; codecs=vp9' is a widely supported format
                 mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm; codecs=vp9' });
                 
                 // Clear previous recording data
@@ -121,6 +240,11 @@
 
                 // Event listener for when the recording stops
                 mediaRecorder.onstop = () => {
+                    // Stop all tracks on the stream to end screen sharing/preview
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(track => track.stop());
+                    }
+                    
                     // Create a blob from the recorded chunks
                     const blob = new Blob(recordedChunks, { type: 'video/webm' });
                     const url = URL.createObjectURL(blob);
@@ -132,7 +256,11 @@
                     isRecording = false;
                     updateUI();
                 };
-
+                
+                // Add listener for when the user manually stops sharing (e.g., via browser bar)
+                const videoTrack = mediaStream.getVideoTracks()[0];
+                videoTrack.onended = stopRecording; // Automatically call stopRecording if the track ends
+                
                 // Start the recording
                 mediaRecorder.start();
                 isRecording = true;
@@ -140,8 +268,16 @@
                 
             } catch (err) {
                 console.error('Error starting screen capture:', err);
-                statusMessage.textContent = 'Permission denied or an error occurred.';
-                // Reset UI in case of error
+                // Check for common permission denial error
+                if (err.name === 'NotAllowedError') {
+                    statusMessage.textContent = 'Screen capture permission denied by the user.';
+                } else if (err.name === 'NotFoundError') {
+                    statusMessage.textContent = 'No suitable display surface found to capture.';
+                } else {
+                    statusMessage.textContent = `An error occurred: ${err.name}`;
+                }
+                
+                // Reset state and UI in case of error
                 isRecording = false;
                 updateUI();
                 startButton.classList.remove('hidden');
@@ -154,21 +290,22 @@
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
             }
-            // Stop all tracks on the stream to end screen sharing
+            // All track stopping is handled in mediaRecorder.onstop to ensure the Blob is created first.
+            // However, a direct call here is safe for manual stops.
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
         }
 
+        // --- Initialization ---
+
         // Attach event listeners to the buttons
         startButton.addEventListener('click', startRecording);
         stopButton.addEventListener('click', stopRecording);
         
-        // Initially hide the download link and stop button
-        stopButton.classList.add('hidden');
-        downloadContainer.classList.add('hidden');
-        videoPreviewContainer.classList.add('hidden');
-        donateContainer.classList.add('hidden');
+        // Initial setup for the UI
+        updateUI(); // Calls to hide download/stop and show start/status
+        statusMessage.textContent = 'Select your settings and click \'Start Recording\'.'; 
 
     </script>
 </body>
