@@ -33,6 +33,7 @@
             <h2 class="text-xl font-semibold text-gray-200">Recording Settings</h2>
             
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                
                 <div class="flex flex-col">
                     <label for="aspectRatio" class="text-sm font-medium mb-1 text-gray-400">Aspect Ratio</label>
                     <select id="aspectRatio" class="p-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500">
@@ -55,8 +56,16 @@
                         <option value="360p">360p (640x360)</option>
                     </select>
                 </div>
+
+                <div class="flex flex-col">
+                    <label for="fileFormat" class="text-sm font-medium mb-1 text-gray-400">File Format</label>
+                    <select id="fileFormat" class="p-2 border border-gray-600 rounded-lg bg-gray-700 text-white focus:ring-blue-500 focus:border-blue-500">
+                        <option value="webm">WebM (.webm) - Recommended</option>
+                        <option value="mp4">MP4 (.mp4)</option>
+                    </select>
+                </div>
                 
-                <div class="flex flex-col col-span-2 md:col-span-1">
+                <div class="flex flex-col">
                     <label for="includeAudio" class="text-sm font-medium mb-1 text-gray-400">Include Audio</label>
                     <button id="audioToggle" class="py-2 px-4 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-lg shadow-md transition-colors duration-200" data-audio="true">
                         Audio: ON 🔊
@@ -85,7 +94,7 @@
         </div>
         
         <div id="downloadContainer" class="text-center mt-6 hidden">
-            <a id="downloadLink" href="#" download="recorded-video.webm" class="inline-block py-2 px-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">
+            <a id="downloadLink" href="#" download="recorded-video" class="inline-block py-2 px-6 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition-colors duration-200">
                 Download Video
             </a>
         </div>
@@ -116,12 +125,30 @@
         const donateContainer = document.getElementById('donateContainer');
         const aspectRatioSelect = document.getElementById('aspectRatio');
         const resolutionSelect = document.getElementById('resolution');
+        const fileFormatSelect = document.getElementById('fileFormat'); // NEW
         const audioToggle = document.getElementById('audioToggle');
         
-        // --- UI Update Functions ---
-        
+        // Map file formats to MIME types and default codecs
+        const FORMAT_MAP = {
+            'webm': {
+                mimeType: 'video/webm',
+                codec: 'vp9',
+                extension: 'webm'
+            },
+            'mp4': {
+                mimeType: 'video/mp4',
+                codec: 'avc1.42002A', // H.264 High Profile 4.2
+                extension: 'mp4'
+            }
+            // Note: MP4 support is less guaranteed than WebM across all browsers
+            // and often requires specific codecs to be specified.
+        };
+
         // Function to update the UI based on the app state
         function updateUI() {
+            // List of controls to disable/enable
+            const controls = [aspectRatioSelect, resolutionSelect, fileFormatSelect, audioToggle];
+
             if (isRecording) {
                 startButton.classList.add('hidden');
                 stopButton.classList.remove('hidden');
@@ -129,25 +156,28 @@
                 videoPreviewContainer.classList.remove('hidden');
                 downloadContainer.classList.add('hidden');
                 donateContainer.classList.add('hidden'); 
-                // Disable settings while recording
-                aspectRatioSelect.disabled = true;
-                resolutionSelect.disabled = true;
-                audioToggle.disabled = true;
+                controls.forEach(control => control.disabled = true);
             } else {
                 startButton.classList.remove('hidden');
                 stopButton.classList.add('hidden');
-                statusMessage.textContent = 'Recording stopped. You can download the video.';
+                
+                // Only show the download link if there are recorded chunks
+                if (recordedChunks.length > 0) {
+                    const selectedFormat = fileFormatSelect.value;
+                    statusMessage.textContent = `Recording stopped. Download your .${FORMAT_MAP[selectedFormat].extension} video.`;
+                    downloadContainer.classList.remove('hidden');
+                } else {
+                    statusMessage.textContent = 'Select your settings and click \'Start Recording\'.';
+                    downloadContainer.classList.add('hidden');
+                }
+                
                 videoPreviewContainer.classList.add('hidden');
-                downloadContainer.classList.remove('hidden');
                 donateContainer.classList.remove('hidden'); 
-                // Enable settings
-                aspectRatioSelect.disabled = false;
-                resolutionSelect.disabled = false;
-                audioToggle.disabled = false;
+                controls.forEach(control => control.disabled = false);
             }
         }
         
-        // Audio Toggle Handler
+        // Audio Toggle Handler (No change, just included for completeness)
         audioToggle.addEventListener('click', () => {
             const currentAudio = audioToggle.dataset.audio === 'true';
             const newAudio = !currentAudio;
@@ -164,9 +194,7 @@
             }
         });
         
-        // --- Recording Logic ---
-
-        // Helper to get selected constraints
+        // Helper to get selected constraints (No functional change)
         function getConstraints() {
             const selectedAspect = aspectRatioSelect.value;
             const selectedResolution = resolutionSelect.value;
@@ -176,7 +204,6 @@
                 frameRate: { ideal: 30 },
             };
             
-            // 1. Resolution Constraint (Ideal/Max)
             const resolutions = {
                 '4K': { width: { ideal: 3840, max: 3840 }, height: { ideal: 2160, max: 2160 } },
                 '1080p': { width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 } },
@@ -189,9 +216,6 @@
                 videoConstraints = { ...videoConstraints, ...resolutions[selectedResolution] };
             }
 
-            // 2. Aspect Ratio Constraint (Based on selection)
-            // Note: This is an IDEAL constraint. The user's screen share selection (window, screen, tab)
-            // will ultimately dictate the captured resolution and aspect ratio. This helps *guide* the capture.
             if (selectedAspect !== 'none') {
                 const parts = selectedAspect.split(':');
                 const ratio = parseInt(parts[0]) / parseInt(parts[1]);
@@ -211,46 +235,55 @@
             const constraints = getConstraints();
             statusMessage.textContent = 'Requesting screen sharing permission...';
 
+            // Determine MIME Type based on selection
+            const selectedFormat = fileFormatSelect.value;
+            const formatInfo = FORMAT_MAP[selectedFormat];
+            // MediaRecorder requires mimeType AND the codec for compatibility
+            const mimeTypeWithCodec = `${formatInfo.mimeType}; codecs=${formatInfo.codec}`;
+
+            // Check if the browser supports the requested format
+            if (!MediaRecorder.isTypeSupported(mimeTypeWithCodec)) {
+                statusMessage.textContent = `Error: Your browser does not fully support the requested format: ${mimeTypeWithCodec}. Please try WebM.`;
+                return;
+            }
+
+
             try {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
                     statusMessage.textContent = 'Error: Your browser does not support screen recording (MediaDevices API missing).';
                     return;
                 }
 
-                // Request permission to capture the screen with selected constraints
-                // getDisplayMedia is an async operation that opens a native dialog
+                // Request permission to capture the screen
                 mediaStream = await navigator.mediaDevices.getDisplayMedia(constraints);
 
-                // Display a preview of the screen capture
+                // Display a preview
                 videoPreview.srcObject = mediaStream;
 
-                // Set up the MediaRecorder
-                // 'video/webm; codecs=vp9' is a widely supported format
-                mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm; codecs=vp9' });
+                // Set up the MediaRecorder using the selected MIME type
+                mediaRecorder = new MediaRecorder(mediaStream, { mimeType: mimeTypeWithCodec });
                 
-                // Clear previous recording data
                 recordedChunks = [];
 
-                // Event listener for when data is available
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
                     }
                 };
 
-                // Event listener for when the recording stops
                 mediaRecorder.onstop = () => {
-                    // Stop all tracks on the stream to end screen sharing/preview
+                    // Stop tracks
                     if (mediaStream) {
                         mediaStream.getTracks().forEach(track => track.stop());
                     }
                     
                     // Create a blob from the recorded chunks
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const blob = new Blob(recordedChunks, { type: formatInfo.mimeType });
                     const url = URL.createObjectURL(blob);
                     
-                    // Set the download link properties
+                    // Set the download link properties, including the dynamic extension
                     downloadLink.href = url;
+                    downloadLink.setAttribute('download', `recorded-video.${formatInfo.extension}`);
                     
                     // Update state and UI
                     isRecording = false;
@@ -259,7 +292,7 @@
                 
                 // Add listener for when the user manually stops sharing (e.g., via browser bar)
                 const videoTrack = mediaStream.getVideoTracks()[0];
-                videoTrack.onended = stopRecording; // Automatically call stopRecording if the track ends
+                videoTrack.onended = stopRecording; 
                 
                 // Start the recording
                 mediaRecorder.start();
@@ -268,7 +301,6 @@
                 
             } catch (err) {
                 console.error('Error starting screen capture:', err);
-                // Check for common permission denial error
                 if (err.name === 'NotAllowedError') {
                     statusMessage.textContent = 'Screen capture permission denied by the user.';
                 } else if (err.name === 'NotFoundError') {
@@ -290,8 +322,6 @@
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
             }
-            // All track stopping is handled in mediaRecorder.onstop to ensure the Blob is created first.
-            // However, a direct call here is safe for manual stops.
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
             }
@@ -304,8 +334,7 @@
         stopButton.addEventListener('click', stopRecording);
         
         // Initial setup for the UI
-        updateUI(); // Calls to hide download/stop and show start/status
-        statusMessage.textContent = 'Select your settings and click \'Start Recording\'.'; 
+        updateUI();
 
     </script>
 </body>
